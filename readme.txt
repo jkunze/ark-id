@@ -1,5 +1,5 @@
 === ARK Identifier Resolver ===
-Contributors: jkunze
+Contributors: josefrankpl-hue, jkunze
 Tags: ark, identifiers, resolver, redirects, permalink
 Requires at least: 6.0
 Tested up to: 6.6
@@ -17,7 +17,8 @@ ARK Identifier Resolver provides a WordPress solution for mapping ARK identifier
 * an embedded page that keeps the ARK URL in the browser, or
 * native HTTP redirects (302 or 303).
 
-This plugin is useful for persistent identifiers, scholarly metadata links, and legacy URL aliasing.
+This plugin was created by Josefrank Pernalete Lugo (josefrankpl-hue).
+It is useful for persistent identifiers, scholarly metadata links, and legacy URL aliasing.
 
 == Installation ==
 
