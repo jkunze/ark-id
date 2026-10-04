@@ -2,10 +2,10 @@
 /**
  * Plugin Name: ARK Identifier Resolver
  * Plugin URI: https://github.com/jkunze/ark-id
- * Description: Resolves ARK identifiers in the format /ark:/xxxxx/name and /ark:/xxxxx/name/qualifier with optional iframe embedding or HTTP 302/303 redirects.
+ * Description: Resolves ARK identifiers in the format /ark:xxxxx/name and /ark:xxxxx/name/qualifier with optional iframe embedding or HTTP 302/303 redirects. Also handles classic-form ARKs (e.g., /ark:/xxxxx/name).
  * Version: 2.1.0
- * Author: jkunze
- * Author URI: https://github.com/jkunze
+ * Author: Josefrank Pernalete Lugo, John Kunze
+ * Author URI: https://github.com/josefrankpl-hue, https://github.com/jkunze
  * License: MIT
  * License URI: https://opensource.org/licenses/MIT
  * Text Domain: ark-id
@@ -52,13 +52,13 @@ final class ARK_ID_Resolver {
 
     public function add_rewrite_rules() {
         add_rewrite_rule(
-            '^ark:/([0-9]{5})/([a-zA-Z0-9\-_.~%+]+)/([a-zA-Z0-9\-_.~%+]+)/?$',
+            '^ark:/?([0-9]{5})/([a-zA-Z0-9\-_.~%+]+)/([a-zA-Z0-9\-_.~%+]+)/?$',
             'index.php?ark_naan=$matches[1]&ark_name=$matches[2]&ark_qualifier=$matches[3]',
             'top'
         );
 
         add_rewrite_rule(
-            '^ark:/([0-9]{5})/([a-zA-Z0-9\-_.~%+]+)/?$',
+            '^ark:/?([0-9]{5})/([a-zA-Z0-9\-_.~%+]+)/?$',
             'index.php?ark_naan=$matches[1]&ark_name=$matches[2]',
             'top'
         );
@@ -157,6 +157,24 @@ final class ARK_ID_Resolver {
 
     public function register_settings() {
         register_setting('ark_id_resolver_group', 'ark_id_records');
+        
+        register_setting('ark_id_resolver_group', 'ark_id_classic', array(
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ));
+        
+        register_setting('ark_id_resolver_group', 'ark_id_naan', array(
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ));
+        
+        register_setting('ark_id_resolver_group', 'ark_id_local_resolver', array(
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => ''
+        ));
     }
 
     public function render_admin_page() {
@@ -164,6 +182,11 @@ final class ARK_ID_Resolver {
             return;
         }
 
+        $default_naan = get_option('ark_id_naan', '');
+        $default_local_resolver = get_option('ark_id_local_resolver', '');
+        if (!preg_match('/\/$'), $default_local_resolver) {
+            $default_local_resolver = $default_local_resolver . '/';
+        }
         if (
             isset($_POST['ark_id_nonce'])
             && wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ark_id_nonce'])), 'ark_id_save_record')
@@ -176,13 +199,16 @@ final class ARK_ID_Resolver {
                 update_option('ark_id_records', $records);
                 echo '<div class="notice notice-success"><p>ARK record deleted.</p></div>';
             } else {
-                $naan = sanitize_text_field(wp_unslash($_POST['ark_naan'] ?? ''));
+                $naan = sanitize_text_field(wp_unslash($_POST['ark_naan'] ?? $default_naan));
                 $name = sanitize_text_field(wp_unslash($_POST['ark_name'] ?? ''));
                 $qualifier = sanitize_text_field(wp_unslash($_POST['ark_qualifier'] ?? ''));
                 $target_url = esc_url_raw(wp_unslash($_POST['ark_url'] ?? ''));
                 $mode = sanitize_text_field(wp_unslash($_POST['ark_mode'] ?? 'iframe'));
                 $type = intval($_POST['ark_type'] ?? 302);
 
+                if (!preg_match('/^https?:\/\//', $target_url)) {
+                    $target_url = $default_local_resolver . $target_url;
+                }
                 if (!preg_match('/^[0-9]{5}$/', $naan)) {
                     echo '<div class="notice notice-error"><p>Error: NAAN must be exactly 5 numeric digits.</p></div>';
                 } elseif (!preg_match('/^[a-zA-Z0-9\-_.~%+]+$/', $name)) {
@@ -209,10 +235,11 @@ final class ARK_ID_Resolver {
         }
 
         $records = get_option('ark_id_records', array());
+        $classic = get_option('ark_id_classic', '');
         ?>
         <div class="wrap">
             <h1>ARK Identifier Resolver</h1>
-            <p>Manage IDs in the form <code>/ark:/xxxxx/assigned-name</code> or <code>/ark:/xxxxx/assigned-name/qualifier</code>.</p>
+            <p>Manage IDs of the form <code>/ark:xxxxx/assigned-name</code> or <code>/ark:xxxxx/assigned-name/qualifier</code>.</p>
 
             <form method="post" action="" style="background: #fff; padding: 20px; border: 1px solid #dcdcde; max-width: 760px; margin-bottom: 24px;">
                 <?php wp_nonce_field('ark_id_save_record', 'ark_id_nonce'); ?>
@@ -283,7 +310,7 @@ final class ARK_ID_Resolver {
                         <tr><td colspan="4">No ARK records saved yet.</td></tr>
                     <?php else : ?>
                         <?php foreach ($records as $key => $data) : ?>
-                            <?php $ark_path = 'ark:/' . $data['naan'] . '/' . $data['name'] . (!empty($data['qualifier']) ? '/' . $data['qualifier'] : ''); ?>
+                            <?php $ark_path = 'ark:' . $classic . $data['naan'] . '/' . $data['name'] . (!empty($data['qualifier']) ? '/' . $data['qualifier'] : ''); ?>
                             <?php $full_ark_url = home_url('/' . $ark_path); ?>
                             <tr>
                                 <td><a href="<?php echo esc_url($full_ark_url); ?>" target="_blank"><code><?php echo esc_html($ark_path); ?></code></a></td>
