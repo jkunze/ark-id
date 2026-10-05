@@ -184,7 +184,7 @@ final class ARK_ID_Resolver {
 
         $default_naan = get_option('ark_id_naan', '');
         $default_local_resolver = get_option('ark_id_local_resolver', '');
-        if (!preg_match('/\/$'), $default_local_resolver) {
+        if (!preg_match('/\/$', $default_local_resolver)) {
             $default_local_resolver = $default_local_resolver . '/';
         }
         if (
